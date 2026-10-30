@@ -1,0 +1,692 @@
+/* Exact values from Figma (posts › node 28:891). Variable names from the file in comments. */
+.root {
+  --bg-primary: #ffffff;    /* bg/primary */
+  --bg-secondary: #fafafa;  /* bg/secondary */
+  --bg-tertiary: #f5f5f5;   /* bg/tertiary */
+  --border: #e0e0e0;        /* border/primary */
+  /* the only three text colours */
+  --text-primary: #1f1f1f;   /* Text/body/primary */
+  --text-secondary: #666666; /* Text/body/secondary */
+  --text-tertiary: #999999;  /* Text/body/tertiary */
+  --blue-300: #93c5fd;      /* blue/300 */
+  --blue-500: #3b82f6;      /* blue/500 */
+  --blue-600: #2563eb;      /* blue/600 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-swap: cubic-bezier(0.3, 1.2, 0.4, 1);
+
+  position: relative;
+  box-sizing: border-box;
+  width: min(640px, 100%);
+  font-family: var(--font-inter3), "Inter", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.03px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  animation: rise 0.8s var(--ease-out) both;
+  isolation: isolate;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px) scale(0.985); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+/* ---------- composer card: 640 × 113.5 ---------- */
+.card {
+  box-sizing: border-box;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 6px 17px 0 rgba(0, 0, 0, 0.02);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 32px;
+  overflow: clip;
+  cursor: text;
+  position: relative;
+  z-index: 1;
+}
+.toolbar { cursor: default; }
+/* The card's width comes from the page, not from its toolbar, so a phone doesn't scroll sideways.
+   When it's narrow, the chips keep their icons and drop their labels (screen readers still get them). */
+.card { container-type: inline-size; }
+@container (max-width: 440px) {
+  .folder .labelWrap,
+  .effortChip .labelWrap,
+  .segLabelWrap { width: 0 !important; margin-left: 0 !important; }
+  .folder { gap: 0; padding: 2px 9px; }
+  .effortChip { gap: 0; padding: 0 10px; }
+  .seg { width: 34px !important; }
+  .thumb { width: 34px !important; }
+}
+
+/* ---------- attached files: a row over the field, 12px above it (the card's 32px gap, less 20) ---------- */
+.files {
+  display: grid;
+  grid-template-rows: 1fr;
+  margin-bottom: -20px;
+  cursor: default;
+  animation: filesIn 0.45s var(--ease-out) both;
+  transition: grid-template-rows 0.42s var(--ease-out), margin-bottom 0.42s var(--ease-out);
+}
+@keyframes filesIn { from { grid-template-rows: 0fr; margin-bottom: -32px; } }
+.filesInner {
+  min-height: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  /* room for each tile's remove button, which hangs over its corner */
+  margin: -6px -6px 0 0;
+  padding: 6px 6px 0 0;
+  overflow: clip;
+}
+.fileTile { animation: tileIn 0.4s var(--ease-swap) both; }
+@keyframes tileIn { from { opacity: 0; transform: scale(0.92); filter: blur(3px); } }
+/* sent: the tiles lift away as the words do, and the row closes up under them */
+.files[data-leaving="true"] { grid-template-rows: 0fr; margin-bottom: -32px; }
+.files[data-leaving="true"] .fileTile { animation: flyOut 0.36s cubic-bezier(0.4, 0, 0.2, 1) both; }
+/* a file dragged over the card */
+.card[data-dropping="true"] { border-color: var(--blue-500); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.14), 0 6px 17px 0 rgba(0, 0, 0, 0.02); }
+.card { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+
+/* the textarea sits over a mirror that paints the styled text (command in blue, suggestion in light blue) */
+.field {
+  position: relative;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  letter-spacing: 0; /* the text runs in Figma override the frame's -0.03px; 0 matches its widths exactly */
+  color: var(--text-primary); /* Figma's frame uses Black here; kept to the three text colours */
+}
+.mirror,
+.input {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.mirror { min-height: 20px; pointer-events: none; }
+.input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text-primary);
+  outline: none;
+}
+.input::selection { background: rgba(59, 130, 246, 0.2); color: transparent; }
+.command { color: var(--blue-500); }
+/* a picked "@" mention: a soft pill, with the logo standing in the "@"'s own space (so widths don't change) */
+.mention { border-radius: 5px; background: rgba(59, 130, 246, 0.08); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.08); color: var(--text-primary); } /* same weight as the field, or the caret drifts */
+.mentionAt { color: transparent; background: var(--icon) center / 12px 12px no-repeat; }
+.optionIcon { display: inline-block; width: 14px; height: 14px; margin: 0 7px -2px 0; vertical-align: baseline; }
+.placeholder { color: var(--text-tertiary); }
+.placeholderLate { animation: fadeIn 0.3s ease 0.45s both; } /* after the sent words have mostly cleared */
+@keyframes fadeIn { from { opacity: 0; } }
+.ghost { color: var(--blue-300); }
+
+/* a sent message lifts, blurs and fades out word by word */
+.outgoing {
+  position: absolute;
+  inset: 0 0 auto 0;
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+.word {
+  display: inline-block;
+  animation-name: flyOut;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  animation-fill-mode: both;
+}
+@keyframes flyOut {
+  to { opacity: 0; transform: translateY(-12px); filter: blur(4px); }
+}
+
+/* ---------- toolbar ---------- */
+.toolbar { display: flex; align-items: flex-start; justify-content: space-between; }
+.group { display: flex; align-items: flex-start; gap: 5px; }
+.actions { display: flex; align-items: center; gap: 4px; }
+
+.circle {
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  padding: 2px;
+  border-radius: 10000px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+.tertiary { background: var(--bg-tertiary); }
+.send { background: var(--blue-600); }
+
+/* toolbar controls are real buttons so Tab reaches them; only send has an action so far */
+.btn {
+  border: 0;
+  margin: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: filter 0.15s ease, background-color 0.15s ease, transform 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn.ghostBtn { background: transparent; }
+.btn.tertiary:hover, .btn.folder:hover { filter: brightness(0.975); }
+.btn.ghostBtn:hover { background: var(--bg-tertiary); }
+.btn.send:hover { filter: brightness(0.92); }
+.send { position: relative; }
+.send > .icon { position: relative; } /* above the ripple */
+.ripple {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--blue-600);
+  pointer-events: none;
+  animation: ripple 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes ripple {
+  from { opacity: 0.35; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.6); }
+}
+.btn:active { transform: scale(0.96); }
+.btn:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+.icon { display: block; flex: none; }
+
+.chipLabel,
+.segLabel {
+  font-size: 12px;
+  line-height: 16px; /* 12 × 1.35, rounded as in Figma */
+  font-weight: 460;
+  white-space: nowrap;
+}
+.folder {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 2px 11px 2px 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 10000px;
+  background: var(--bg-tertiary);
+}
+.chipLabel { color: var(--text-secondary); }
+
+/* ---------- local / remote switch ---------- */
+.switch {
+  position: relative;
+  box-sizing: border-box;
+  align-self: stretch;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 1000px;
+  background: var(--bg-tertiary);
+  overflow: clip;
+}
+.thumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  border-radius: 10000px;
+  background: var(--bg-primary);
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.06));
+  transition: left 0.42s var(--ease-swap), width 0.42s var(--ease-swap);
+}
+.seg {
+  position: relative;
+  box-sizing: border-box;
+  height: 28px;
+  padding: 2px 10px;
+  display: flex;
+  align-items: center;
+  border: 0;
+  border-radius: 10000px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.seg:first-of-type { margin-right: -2px; }
+.seg:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 0; }
+.seg[aria-checked="true"] { cursor: default; }
+
+/* the icon assets are used as masks so they can change colour with the state */
+.maskIcon {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  background-color: var(--text-secondary);
+  -webkit-mask: var(--icon) center / 14px 14px no-repeat;
+          mask: var(--icon) center / 14px 14px no-repeat;
+  transition: background-color 0.3s ease;
+}
+.laptop { --icon: url("./icons/laptop.svg"); }
+.cloud { --icon: url("./icons/cloud.svg"); }
+.seg[aria-checked="true"] .maskIcon,
+.seg:hover .maskIcon { background-color: var(--text-primary); }
+
+.segLabelWrap {
+  display: flex; /* no inherited line box, so the label centres like Figma's */
+  overflow: hidden;
+  margin-left: 0;
+  transition: width 0.42s var(--ease-swap), margin-left 0.42s var(--ease-swap);
+}
+.segLabel {
+  display: inline-block;
+  color: var(--text-primary);
+  opacity: 0;
+  transform: translateX(-4px);
+  filter: blur(2px);
+  transition: opacity 0.18s ease, transform 0.42s var(--ease-swap), filter 0.25s ease;
+}
+.seg[aria-checked="true"] .segLabelWrap { margin-left: 5px; }
+.seg[aria-checked="true"] .segLabel {
+  opacity: 1;
+  transform: none;
+  filter: none;
+  transition-delay: 0.08s, 0s, 0.08s;
+}
+
+/* ---------- skill list: 320 wide ---------- */
+.popover {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 7px); /* floats 7px above the card, so the card itself stays centred */
+  box-sizing: border-box;
+  width: min(320px, 100%);
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 6px 17px 0 rgba(0, 0, 0, 0.02);
+  overflow: clip;
+  z-index: 3;
+  transform-origin: 24px 100%;
+  transition:
+    opacity 0.16s ease,
+    transform 0.22s var(--ease-out),
+    height 0.22s var(--ease-out),
+    visibility 0s;
+}
+.popover[data-open="false"] {
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.12s ease,
+    transform 0.16s ease,
+    height 0.22s var(--ease-out),
+    visibility 0s 0.16s;
+}
+.list { margin: 0; padding: 4px; list-style: none; display: flex; flex-direction: column; }
+.item {
+  box-sizing: border-box;
+  padding: 10px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.item[aria-selected="true"] { background: var(--bg-secondary); }
+.name,
+.desc {
+  position: relative;
+  margin: 0;
+  font-weight: 460;
+  white-space: nowrap;
+}
+/* Figma rounds text boxes (13 × 1.45 → 19, 11 × 1.45 → 16); matching that keeps rows on the same pixels */
+.name { font-size: 13px; line-height: 19px; color: var(--text-primary); }
+.name b { font-weight: 500; color: var(--text-primary); }
+.desc {
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- effort: bars + level in the toolbar, and a slider made of the Local / Remote switch ---------- */
+.effortChip {
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 11px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 10000px;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.effortChip:hover,
+.effortChip[aria-expanded="true"] { background: var(--bg-tertiary); }
+.labelWrap { display: flex; overflow: hidden; transition: width 0.42s var(--ease-swap); }
+.swapLabel { display: inline-block; animation: labelIn 0.3s var(--ease-out) both; }
+@keyframes labelIn { from { opacity: 0; transform: translateY(3px); filter: blur(2px); } }
+
+.bars { display: flex; align-items: flex-end; gap: 1.5px; height: 12px; }
+.bars i {
+  display: block;
+  width: 2px;
+  border-radius: 1px;
+  background: #d4d4d4;
+  transform-origin: 50% 100%;
+  transition: background-color 0.25s ease;
+}
+.bars i[data-on="true"] { background: var(--text-primary); }
+
+/* off-screen copy of the five names, measured once the font is ready */
+.measure { position: absolute; visibility: hidden; pointer-events: none; display: flex; white-space: nowrap; }
+
+/* ---------- toolbar menus hang from their own buttons (positioned by useAnchor) ---------- */
+.anchored { top: 0; left: 0; right: auto; bottom: auto; }
+.anchored[data-open="false"][data-side="bottom"] { transform: translateY(-6px) scale(0.98); }
+
+/* after Claude's effort slider, built from the composer's parts */
+.effortPop {
+  width: 220px;
+  padding: 12px 14px 14.5px; /* every row runs edge to edge inside this; the gap below the track matches the one above the text */
+  display: flex;
+  flex-direction: column;
+  overflow: visible; /* the help tip may overhang */
+}
+.effHead { position: relative; display: flex; align-items: center; gap: 6px; height: 16px; }
+/* one size throughout, the toolbar labels' 12px; hierarchy comes from colour */
+.effTitle { font-size: 12px; line-height: 16px; font-weight: 460; color: var(--text-secondary); }
+/* letters carry ~1px of side bearing; pull the left-hand text onto the track's edge */
+.effTitle,
+.effEnds span:first-child { margin-left: -1px; }
+.effLevel { font-size: 12px; line-height: 16px; font-weight: 460; color: var(--text-primary); }
+.effHelp {
+  /* the circle (12.25px wide in its 14px glyph, in a 22px button) lands exactly on the right edge,
+     and the button doesn't add height to the 16px header */
+  margin: -3px -5px -3px auto;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 10000px;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: help;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.effHelp:hover, .effHelp:focus-visible { background: var(--bg-tertiary); color: var(--text-primary); }
+.effHelp:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 0; }
+/* the tip uses the popover surface, like the skill list */
+.effTip {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + 6px);
+  right: -8px;
+  width: 196px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  box-shadow: 0 6px 17px 0 rgba(0, 0, 0, 0.06);
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 17px;
+  font-weight: 460;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.effHelp:hover + .effTip,
+.effHelp:focus-visible + .effTip { opacity: 1; transform: none; transition-delay: 0.25s; }
+
+.effEnds {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 460;
+  color: var(--text-tertiary);
+}
+
+/* the Local / Remote switch's materials as a slider: grey pill track, white pill thumb, a darker fill behind it */
+.effTrack {
+  position: relative;
+  height: 24px;
+  margin-top: 6px;
+  border-radius: 1000px;
+  background: var(--bg-tertiary);
+  cursor: pointer;
+  touch-action: none;
+  outline: none;
+}
+.effFill {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 2px;
+  width: calc(26px + (100% - 30px) * var(--p)); /* ends at the thumb's right edge */
+  border-radius: 10000px;
+  background: #ebebeb;
+  background-size: 220% 100%;
+  transition: width 0.42s var(--ease-swap);
+}
+.effDot {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  transition: background-color 0.2s ease;
+}
+.effDot { width: 3px; height: 3px; border-radius: 50%; background: #d4d4d4; }
+.effDot[data-on="true"] { background: #c4c4c4; }
+.effThumb {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: calc(15px + (100% - 30px) * var(--p));
+  width: 26px;
+  margin-left: -13px;
+  border-radius: 10000px;
+  background: var(--bg-primary);
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.06)); /* the switch thumb's shadow */
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  cursor: grab;
+  transition: left 0.42s var(--ease-swap), transform 0.18s ease, box-shadow 0.2s ease;
+}
+.effTrack:hover .effThumb { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+.effTrack[data-dragging="true"] { cursor: grabbing; }
+.effTrack[data-dragging="true"] .effThumb { transform: scale(1.04); cursor: grabbing; }
+.effTrack[data-dragging="true"] .effFill,
+.effTrack[data-dragging="true"] .effThumb { transition-property: transform, box-shadow; }
+.effTrack:focus-visible .effThumb { outline: 2px solid var(--blue-600); outline-offset: 0; }
+
+/* ---------- project picker, after Claude's: search, recents, repos and folder actions ---------- */
+.wsPop { width: 280px; padding: 0; display: flex; flex-direction: column; }
+.wsInput {
+  flex: none;
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 0.75px solid #ebebeb;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 460;
+  letter-spacing: -0.03px;
+  color: var(--text-primary);
+}
+.wsInput::placeholder { color: var(--text-tertiary); }
+.wsBody {
+  position: relative;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d4 transparent;
+}
+.wsSection { padding: 5px 10px 3px; font-size: 12px; line-height: 16px; font-weight: 460; color: var(--text-tertiary); }
+.wsItem {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) 14px;
+  align-items: center;
+  gap: 10px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--text-primary); /* the current project's tick */
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+.wsItem[aria-selected="true"] { background: var(--bg-tertiary); }
+.wsIcon { display: block; color: var(--text-secondary); }
+.wsChevron { display: block; color: var(--text-tertiary); }
+.wsItem .maskIcon { transition: none; }
+.wsName {
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 460;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wsName b { font-weight: 500; color: var(--text-primary); }
+.wsSep { height: 0.75px; margin: 3px -4px; background: #ebebeb; }
+.wsEmpty { padding: 6px 10px 8px; font-size: 12px; line-height: 16px; font-weight: 460; color: var(--text-tertiary); }
+.btn.folder[aria-expanded="true"] { filter: brightness(0.975); }
+
+/* ---------- Max ---------- */
+@property --aura-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+.aura,
+.auraRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  background: conic-gradient(from var(--aura-angle), #2563eb, #60a5fa, #a5b4fc, #818cf8, #3b82f6, #93c5fd, #2563eb);
+  animation: auraSpin 4.5s linear infinite;
+}
+.aura { z-index: 0; filter: blur(18px); }
+.auraRing {
+  z-index: 2;
+  padding: 1px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+}
+.root[data-max="true"] .aura { opacity: 0.45; }
+.root[data-max="true"] .auraRing { opacity: 1; }
+@keyframes auraSpin { to { --aura-angle: 360deg; } }
+
+.burst { position: absolute; z-index: 4; pointer-events: none; }
+/* on a phone the burst's canvas would reach past the screen's sides and let the page scroll sideways */
+@media (max-width: 720px) {
+  .root { overflow-x: clip; }
+}
+
+/* the fill turns into a moving gradient, the thumb glows, and "Max" shimmers… */
+.effTrack[data-max="true"] .effFill {
+  background-image: linear-gradient(110deg, #2563eb 0%, #4f46e5 30%, #60a5fa 50%, #4f46e5 70%, #2563eb 100%);
+  animation: shimmer 1.8s linear infinite;
+}
+.effTrack[data-max="true"] .effDot { background: rgba(255, 255, 255, 0.6); }
+.effTrack[data-max="true"] .effThumb {
+  filter: drop-shadow(0 2px 6px rgba(79, 70, 229, 0.45));
+  box-shadow: 0 0 0 0.75px #c7d2fe;
+}
+.effLevel[data-max="true"] {
+  background: linear-gradient(90deg, #2563eb, #818cf8, #3b82f6, #a5b4fc, #2563eb);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  animation: labelIn 0.3s var(--ease-out) both, shimmer 2.4s linear infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -120% 0; } }
+
+/* …the bars turn blue and bounce like an equaliser, and "Max" shimmers */
+.bars[data-max="true"] i { background: linear-gradient(180deg, #818cf8, #2563eb); animation: eq 0.5s ease-in-out infinite alternate; }
+@keyframes eq { from { transform: scaleY(0.45); } to { transform: scaleY(1); } }
+.effortChip[data-max="true"] .swapLabel {
+  background: linear-gradient(90deg, #2563eb, #818cf8, #3b82f6, #a5b4fc, #2563eb);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  animation: labelIn 0.3s var(--ease-out) both, shimmer 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root { animation: none; }
+  .thumb, .segLabelWrap, .segLabel, .popover, .popover[data-open="false"] { transition: none; }
+  .word, .ripple, .placeholderLate, .swapLabel { animation-duration: 1ms !important; animation-delay: 0s !important; }
+  .effFill, .effThumb, .labelWrap, .effTip { transition: none; }
+  .aura, .auraRing, .bars[data-max="true"] i, .effTrack[data-max="true"] .effFill, .effLevel[data-max="true"] { animation: none; }
+  .effortChip[data-max="true"] .swapLabel { animation: none; }
+  .files, .files[data-leaving="true"] .fileTile, .fileTile { animation-duration: 1ms !important; transition: none; }
+}
+
+/* ---------- dark: inside anything marked data-theme="dark" ---------- */
+:global([data-theme="dark"]) .root {
+  color-scheme: dark;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #202020;
+  --bg-tertiary: #262626;
+  --border: #2e2e2e;
+  --text-primary: #ededed;
+  --text-secondary: #a1a1a1;
+  --text-tertiary: #6b6b6b;
+  --blue-300: #3d5f99;      /* the suggestion: as quiet as on white */
+  color: var(--text-primary);
+}
+/* the toolbar's icon files are drawn in Text/body/secondary: flipped, they land on its dark value */
+:global([data-theme="dark"]) .btn:not(.send) img.icon { filter: invert(1) brightness(1.055); }
+:global([data-theme="dark"]) .btn.tertiary:hover,
+:global([data-theme="dark"]) .btn.folder:hover,
+:global([data-theme="dark"]) .btn.folder[aria-expanded="true"] { filter: brightness(1.2); }
+/* thumbs sit a step above their track, as white does on grey */
+:global([data-theme="dark"]) .thumb,
+:global([data-theme="dark"]) .effThumb { background: #3a3a3a; }
+:global([data-theme="dark"]) :where(.card, .popover) { box-shadow: 0 6px 17px 0 rgba(0, 0, 0, 0.3); }
+:global([data-theme="dark"]) .effTip { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+:global([data-theme="dark"]) .bars :where(i) { background: #404040; } /* Max's colours still win, here and below */
+:global([data-theme="dark"]) .effFill { background-color: #303030; }
+:global([data-theme="dark"]) :where(.effDot) { background: #444444; }
+:global([data-theme="dark"]) :where(.effDot)[data-on="true"] { background: #555555; }
+:global([data-theme="dark"]) .wsInput { border-bottom-color: var(--border); }
+:global([data-theme="dark"]) .wsSep { background: var(--border); }
+:global([data-theme="dark"]) .wsBody { scrollbar-color: #3a3a3a transparent; }
+
+/* ---------- dictation ---------- */
+/* words still being dictated: dimmed and in italics until you keep them */
+.dictated { color: var(--text-tertiary); font-style: italic; }
+.btn.mic:disabled { cursor: default; opacity: 0.4; }
+.btn.mic:disabled:hover { background: transparent; }
+/* while recording, the toolbar is cancel, your voice level across the middle, and keep */
+.recBar { align-items: center; gap: 4px; animation: fadeIn 0.25s ease both; } /* the actions' 4px gap */
+.recBar > .btn { color: var(--text-secondary); }
+.wave { flex: 1; min-width: 0; height: 28px; margin-right: 8px; color: var(--text-secondary); }

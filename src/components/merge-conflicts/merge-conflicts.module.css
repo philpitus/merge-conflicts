@@ -1,0 +1,876 @@
+/* Create PR & merge conflicts. The chat, the bar and the card use the prompt composer's tokens
+   (posts › 28:891): its three text colours, border/primary, the 16px corner and 0.75px border, and its
+   32px pills. Your branch is blue, as you are on the map; amber says something needs you, green is good
+   to go, and violet is merged, as on GitHub. Text that's read clears 4.5:1 on what's behind it. */
+.root {
+  --stage: #ffffff;          /* the stage behind it: the thinking panels' halo */
+  --bg-primary: #ffffff;     /* bg/primary */
+  --bg-secondary: #fafafa;   /* bg/secondary */
+  --bg-tertiary: #f5f5f5;    /* bg/tertiary */
+  --border: #e0e0e0;         /* border/primary */
+  --text-primary: #1f1f1f;   /* Text/body/primary */
+  --text-secondary: #666666; /* Text/body/secondary: 5.7:1 on white */
+  --text-tertiary: #999999;  /* Text/body/tertiary: only on things that aren't read */
+  --blue-50: #eff6ff;
+  --blue-300: #93c5fd;       /* blue/300: your branch's line */
+  --blue-500: #3b82f6;       /* blue/500: your commits */
+  --blue-600: #2563eb;       /* blue/600: focus rings */
+  --blue-700: #1d4ed8;       /* your branch's name: 6.3:1 on blue-50 */
+  --green-50: #f0fdf4;
+  --green-500: #22c55e;
+  --green-700: #1a7f37;      /* additions, ready: GitHub's, 5.1:1 on white */
+  --red-500: #ef4444;
+  --red-600: #d1242f;        /* deletions: GitHub's, 5.0:1 on white */
+  --diff-add: #4ac26b;       /* GitHub's diffstat squares */
+  --diff-del: #e5534b;
+  --amber-50: #fffbeb;
+  --amber-500: #f59e0b;
+  --amber-700: #b45309;      /* conflicts: 5.0:1 on white */
+  --violet-50: #f5f3ff;
+  --violet-300: #c4b5fd;
+  --violet-500: #8b5cf6;
+  --violet-700: #6d28d9;     /* merged: 7.1:1 on white */
+  --line-main: #d4d4d4;
+  --teal-50: #f0fdfa;
+  --teal-300: #99e2d6;       /* Sam's branch */
+  --teal-500: #14b8a6;
+  --teal-700: #0f766e;       /* 5.5:1 on teal-50 */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-swap: cubic-bezier(0.3, 1.2, 0.4, 1);
+  --pop: cubic-bezier(0.3, 1.45, 0.5, 1);
+  --mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(600px, 100%); /* the map's width */
+  font-family: var(--font-inter3), "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 460;
+  letter-spacing: -0.03px;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.root *, .root *::before, .root *::after { box-sizing: border-box; }
+/* Dark: the same roles on a near-black stage. Surfaces step up in grey, lines step down toward the
+   background, and the accents are GitHub's dark ones. Read text still clears 4.5:1 on what's behind it. */
+.root[data-theme="dark"] {
+  color-scheme: dark;
+  --stage: #111111;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #202020;
+  --bg-tertiary: #262626;
+  --border: #2e2e2e;
+  --text-primary: #ededed;
+  --text-secondary: #a1a1a1; /* 6.4:1 on bg/tertiary */
+  --text-tertiary: #6b6b6b;
+  --blue-50: #172338;
+  --blue-300: #2f5596;
+  --blue-500: #3b82f6;
+  --blue-600: #4c8df7;
+  --blue-700: #8cb8ff;       /* 8.2:1 on blue-50 */
+  --green-50: #15271b;
+  --green-500: #2fbf5b;
+  --green-700: #3fb950;      /* GitHub dark's, 6.8:1 on bg/primary */
+  --red-600: #f85149;        /* 5.4:1 */
+  --diff-add: #2ea043;
+  --diff-del: #da3633;
+  --amber-50: #2a2112;
+  --amber-700: #e3a33b;      /* 7.4:1 on amber-50 */
+  --violet-50: #221c35;
+  --violet-300: #5a46a0;
+  --violet-700: #b197fc;     /* 7.0:1 */
+  --line-main: #383838;
+  --teal-50: #112b28;
+  --teal-300: #1d6b62;
+  --teal-700: #3fd4c0;
+}
+/* As tall as what's in it, centred on the stage, so it stays in the middle as the conversation grows.
+   On the stage it stops at the screen's height, and the chat scrolls inside it beyond that. */
+:global(main) > .root { max-height: calc(100dvh - 48px); }
+/* The composer's burst canvas and hidden project menu reach well below it. Clip them at the stage's
+   edges (a screen tall), not the module's, so the page never scrolls and the module's own shadows and
+   tooltips stay whole. */
+:global(main):has(> .root) { overflow: clip; }
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+@keyframes fadeIn { from { opacity: 0; } }
+@keyframes swapIn { from { opacity: 0; transform: translateY(3px); filter: blur(2px); } }
+@keyframes popIn { from { opacity: 0; transform: scale(0.85) translateY(2px); } }
+@keyframes nodeIn { from { opacity: 0; transform: scale(0.3); } }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes spin { to { rotate: 360deg; } }
+
+/* ---------- the chat: newest at the bottom, scrolling under the bar ---------- */
+.chat { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.scroller {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  /* a little room at the sides for the card's shadow and the tooltips */
+  margin: 0 -12px;
+  padding: 0 12px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+/* once it's taller than the screen and scrolls: it fades out at the top, and under the floating bar */
+.scroller[data-overflow="true"] {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 32px, #000 calc(100% - 58px), transparent calc(100% - 22px));
+          mask-image: linear-gradient(to bottom, transparent 0, #000 32px, #000 calc(100% - 58px), transparent calc(100% - 22px));
+}
+.scroller::-webkit-scrollbar { display: none; }
+/* no room at the top until it scrolls (then for the fade), so the module's visible edges are its own */
+.content { margin-top: auto; display: flex; flex-direction: column; gap: 24px; padding: 0 0 64px; }
+.scroller[data-overflow="true"] .content { padding-top: 32px; }
+/* before anything's been said, just the bar's room above the composer (26px pills and their 7px gap) */
+.content:empty { padding: 33px 0 0; }
+
+.user {
+  align-self: flex-end;
+  max-width: 76%;
+  padding: 10px 15px;
+  border-radius: 20px;
+  background: var(--bg-tertiary);
+  font-size: 14px;
+  line-height: 21px;
+  text-wrap: pretty;
+  animation: rise 0.6s var(--ease-out) both;
+}
+.turn { display: flex; flex-direction: column; gap: 16px; animation: fadeIn 0.4s ease both; }
+.para { margin: 0; font-size: 14px; line-height: 22px; text-wrap: pretty; }
+.para strong { font-weight: 600; }
+.para code,
+.inlineCode {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  letter-spacing: 0;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--bg-tertiary);
+}
+.word { animation: wordIn 0.35s ease both; }
+@keyframes wordIn { from { opacity: 0; filter: blur(2px); } }
+
+.composer { position: relative; z-index: 3; display: flex; justify-content: center; }
+
+/* on load: the composer rises, then the bar above it (0.15s later) */
+
+/* ---------- the bar: two small pills floating 7px above the composer, at its left (the skill list's gap) ---------- */
+.bar {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  bottom: calc(100% + 7px);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  animation: rise 0.7s var(--ease-out) 0.15s both;
+}
+.pill {
+  position: relative;
+  flex: none;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10000px;
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 0.75px var(--border), 0 4px 12px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 460;
+  letter-spacing: inherit;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.3s ease, color 0.2s ease, box-shadow 0.3s ease, width 0.45s var(--ease-swap), scale 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+.pill:hover { background: var(--bg-secondary); color: var(--text-primary); }
+.pill:active { scale: 0.96; }
+.pill:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+
+/* the diffstat, as GitHub draws it */
+.changes { gap: 8px; padding-right: 8px; }
+.changes[aria-expanded="true"] { background: var(--bg-tertiary); }
+.stat { display: inline-flex; gap: 5px; font-variant-numeric: tabular-nums; }
+.add { color: var(--green-700); font-variant-numeric: tabular-nums; }
+.del { color: var(--red-600); font-variant-numeric: tabular-nums; }
+.blocks { display: inline-flex; gap: 1px; margin-left: -1px; }
+.blocks i { display: block; width: 6px; height: 6px; border-radius: 1.5px; background: var(--diff-add); }
+.blocks i[data-kind="del"] { background: var(--diff-del); }
+.blocks i[data-kind="none"] { background: #e2e2e2; }
+.chev { margin-left: -2px; color: var(--text-tertiary); transition: rotate 0.3s var(--ease-out), color 0.15s ease; }
+.changes:hover .chev { color: var(--text-secondary); }
+.changes[aria-expanded="true"] .chev { rotate: 180deg; }
+/* once merged there's nothing left to change: the pill folds away */
+.changesWrap { display: grid; grid-template-columns: 1fr; transition: grid-template-columns 0.5s var(--ease-out), opacity 0.25s ease, margin 0.5s var(--ease-out); }
+.changesWrap > * { min-width: 0; }
+.changesWrap[data-gone="true"] { grid-template-columns: 0fr; opacity: 0; margin-left: -4px; overflow: hidden; pointer-events: none; }
+
+/* Create PR, then the PR's status. Its width eases to fit what it says */
+.prBtn { padding: 0; overflow: hidden; justify-content: flex-start; }
+.prFace { display: inline-flex; align-items: center; width: max-content; padding: 0 10px; }
+.prFaceIn { display: inline-flex; align-items: center; gap: 6px; animation: swapIn 0.35s var(--ease-out) both; }
+.prBtn:not([data-tone="plain"]) { color: var(--text-primary); } /* once it's a PR, its number reads first */
+.prBtn[aria-busy="true"] { cursor: progress; }
+.prNote { color: var(--text-secondary); transition: color 0.3s ease; }
+.prBtn[data-tone="amber"] .statusDot { color: var(--amber-500); }
+.prBtn[data-tone="amber"] .prNote { color: var(--amber-700); }
+.prBtn[data-tone="green"] .statusDot { color: var(--green-500); }
+.prBtn[data-tone="green"] .prNote { color: var(--green-700); }
+.prBtn[data-tone="violet"] svg { color: var(--violet-500); }
+.prBtn[data-tone="violet"] .prNote { color: var(--violet-700); }
+.statusDot { position: relative; width: 6px; height: 6px; margin: 0 1px; border-radius: 50%; background: currentColor; }
+.statusDot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; animation: ping 1.8s ease-out infinite; }
+.prBtn[data-tone="green"] .statusDot::after { animation: none; }
+@keyframes ping { from { opacity: 0.5; transform: scale(1); } to { opacity: 0; transform: scale(2.8); } }
+.spinner { flex: none; animation: spin 0.8s linear infinite; }
+
+/* the branch's files, over the chat */
+.filesPop {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 7px);
+  width: 340px;
+  max-width: calc(100vw - 32px);
+  padding: 4px;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 6px 17px rgba(0, 0, 0, 0.06);
+  transform-origin: 30% 100%;
+  transition: opacity 0.16s ease, transform 0.22s var(--ease-out), visibility 0s;
+}
+.filesPop[data-open="false"] {
+  opacity: 0;
+  transform: translateY(6px) scale(0.98);
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.16s ease, visibility 0s 0.16s;
+}
+.popHead { display: flex; align-items: center; gap: 6px; margin: 0; padding: 8px 10px 6px; font-size: 12px; line-height: 16px; color: var(--text-secondary); }
+.branch {
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.fileList { margin: 0; padding: 0; list-style: none; }
+.fileRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  outline: none;
+  cursor: default;
+  transition: background-color 0.12s ease;
+}
+.fileRow:hover,
+.fileRow:focus-visible { background: var(--bg-tertiary); }
+.fileRow:focus-visible { box-shadow: inset 0 0 0 2px var(--blue-600); }
+/* a peek at the file's diff, beside the list */
+.peek {
+  position: absolute;
+  z-index: 4;
+  left: calc(100% + 14px);
+  top: 50%;
+  width: max-content;
+  max-width: 340px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-radius: 12px;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  box-shadow: 0 6px 17px rgba(0, 0, 0, 0.07);
+  pointer-events: none;
+  opacity: 0;
+  translate: -4px -50%;
+  transition: opacity 0.15s ease, translate 0.2s var(--ease-out);
+}
+.fileRow:hover .peek,
+.fileRow:focus-visible .peek { opacity: 1; translate: 0 -50%; transition-delay: 0.08s; }
+.peekHead { padding: 0 4px 5px; font-family: var(--mono); font-size: 11px; line-height: 15px; letter-spacing: 0; color: var(--text-secondary); }
+.peekLine { display: grid; grid-template-columns: 12px minmax(0, 1fr); padding: 1px 6px 1px 4px; border-radius: 4px; }
+.peekLine b, .peekLine code { font-family: var(--mono); font-size: 11px; line-height: 17px; letter-spacing: 0; font-weight: 400; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.peekLine code { color: var(--text-primary); }
+.peekLine[data-kind="+"] { background: #ecfdf3; }
+.peekLine[data-kind="+"] b { color: var(--green-700); }
+.peekLine[data-kind="-"] { background: #fef0f0; }
+.peekLine[data-kind="-"] b { color: var(--red-600); }
+.peekLine[data-kind=" "] code { color: var(--text-secondary); }
+/* no room beside the list on a phone: it opens above the row instead */
+@media (max-width: 760px) {
+  .peek { left: 4px; top: auto; bottom: calc(100% + 4px); max-width: calc(100vw - 48px); translate: 0 4px; }
+  .fileRow:hover .peek, .fileRow:focus-visible .peek { translate: 0 0; }
+}
+.fileRow svg { display: block; }
+.fileName { font-size: 13px; line-height: 19px; color: var(--text-primary); white-space: nowrap; }
+.fileMeta { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fileDir { min-width: 0; font-size: 12px; line-height: 16px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fileStat { display: flex; gap: 6px; font-size: 12px; line-height: 16px; }
+.tag {
+  flex: none;
+  height: 18px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--green-50);
+  color: var(--green-700);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 540;
+  white-space: nowrap;
+}
+.tag[data-tone="amber"] { background: var(--amber-50); color: var(--amber-700); }
+
+/* ---------- the pull request: a title, the history, and one line for where it stands ---------- */
+.card {
+  container-type: inline-size;
+  position: relative;
+  padding: 14px 14px 12px;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  border-radius: 16px;
+  box-shadow: 0 6px 17px rgba(0, 0, 0, 0.02);
+  outline: none;
+  animation: rise 0.6s var(--ease-out) both;
+}
+.card { z-index: 1; } /* tooltips hang over the answer below it */
+.cardHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.title { margin: 0; min-width: 0; font-size: 14px; line-height: 20px; font-weight: 560; letter-spacing: -0.1px; text-wrap: pretty; }
+.number { display: inline-block; font-weight: 460; color: var(--text-secondary); white-space: pre; animation: swapIn 0.4s var(--ease-out) both; }
+/* a word for its state, with a dot in its colour */
+.state {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  animation: swapIn 0.4s var(--ease-out) both;
+}
+.state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.state[data-state="open"] { color: var(--green-700); }
+.state[data-state="merged"] { color: var(--violet-700); }
+
+/* the status line: the step in progress, or where it stands and the one thing to do next */
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+  margin-top: 10px;
+}
+.statusText {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 19px;
+  color: var(--text-primary);
+}
+.statusText .spinner { color: var(--text-secondary); }
+.statusText > .shimmer { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.statusIcon { flex: none; }
+.statusText[data-tone="amber"] .statusIcon { color: var(--amber-700); }
+.statusText[data-tone="green"] .statusIcon { color: var(--green-700); }
+.statusText[data-tone="violet"] .statusIcon { color: var(--violet-700); }
+.swap { animation: swapIn 0.35s var(--ease-out) both; }
+.tickIn path { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.4s ease-out 0.15s forwards; }
+
+/* the shimmer that runs across whatever is in progress, as in the thinking panel */
+.shimmer {
+  background: linear-gradient(90deg, var(--shimmer-base, var(--text-primary)) 0%, var(--shimmer-base, var(--text-primary)) 38%, var(--shimmer-glint, var(--text-tertiary)) 50%, var(--shimmer-base, var(--text-primary)) 62%, var(--shimmer-base, var(--text-primary)) 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  animation: shimmer 1.8s linear infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+
+/* the one action: tinted blue, like the map's "Send to iPhone" */
+.action {
+  flex: none;
+  height: 30px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  background: color-mix(in srgb, var(--blue-500) 11%, transparent);
+  color: var(--blue-700);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 16px;
+  font-weight: 540;
+  letter-spacing: -0.05px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, scale 0.15s ease;
+  animation: swapIn 0.35s var(--ease-out) both;
+  -webkit-tap-highlight-color: transparent;
+}
+.action:hover { background: color-mix(in srgb, var(--blue-500) 17%, transparent); }
+.action:active { scale: 0.96; }
+.action:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 2px; }
+.action[aria-disabled="true"] { background: var(--bg-tertiary); color: var(--text-secondary); cursor: progress; }
+.actionPlain { background: var(--bg-tertiary); color: var(--text-primary); text-decoration: none; }
+.actionPlain:hover { background: #ececec; }
+.actionFace { display: inline-flex; align-items: center; gap: 6px; animation: swapIn 0.3s var(--ease-out) both; }
+
+/* ---------- the conflicts, line by line, over whatever is hovered ---------- */
+.hoverable { position: relative; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px; outline: none; cursor: help; }
+.hoverable:focus-visible { box-shadow: 0 0 0 2px var(--blue-600); }
+.count { color: var(--amber-700); font-weight: 520; text-decoration: underline dotted rgba(180, 83, 9, 0.5); text-underline-offset: 3px; }
+.conflictTip {
+  position: absolute;
+  z-index: 6;
+  left: -8px;
+  bottom: calc(100% + 8px);
+  width: max-content;
+  max-width: min(440px, 92cqw);
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 12px;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  box-shadow: 0 6px 17px rgba(0, 0, 0, 0.08);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 460;
+  color: var(--text-primary);
+  white-space: normal;
+  cursor: default;
+  pointer-events: none;
+  opacity: 0;
+  translate: 0 3px;
+  transition: opacity 0.15s ease, translate 0.15s ease;
+}
+/* from a commit near the top of the log it opens downward, into the card */
+.conflictTip[data-below="true"] { bottom: auto; top: calc(100% + 8px); translate: 0 -3px; }
+.hoverable:hover .conflictTip,
+.hoverable:focus-visible .conflictTip { opacity: 1; translate: none; transition-delay: 0.1s; }
+.tipLead { padding: 2px 4px 0; font-size: 12px; line-height: 17px; color: var(--text-secondary); }
+.tipLead b { font-weight: 540; color: var(--text-primary); }
+.clashItem { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; border-top: 0.75px solid #f0f0f0; transition: opacity 0.3s ease; }
+.clashItem[data-done="true"] { opacity: 0.5; }
+.clashWhere { display: flex; align-items: baseline; gap: 6px; padding: 0 4px 3px; font-size: 12px; line-height: 16px; font-weight: 520; color: var(--text-primary); }
+.clashLine { font-weight: 460; color: var(--text-secondary); }
+.clashDone { display: inline-flex; align-items: center; gap: 3px; margin-left: auto; font-weight: 500; color: var(--green-700); }
+/* the two versions: who wrote it, then the line, marked with a thin bar in their colour */
+.clashSide { display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: baseline; gap: 8px; padding: 2px 4px 2px 8px; border-left: 2px solid; }
+.clashSide[data-who="lena"] { border-color: #f5b98a; }
+.clashSide[data-who="you"] { border-color: var(--blue-300); }
+.clashSide b { font-size: 11.5px; line-height: 17px; font-weight: 520; color: var(--text-secondary); }
+.clashSide code { font-family: var(--mono); font-size: 11.5px; line-height: 17px; letter-spacing: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* a hovered row, and the status line, lift their tooltips over the rows around them */
+.logRow:has(.hoverable:hover),
+.logRow:has(.hoverable:focus-visible) { z-index: 5; }
+.status { position: relative; z-index: 4; }
+
+/* ---------- CI: the checks, ticking in once the merge is pushed ---------- */
+.checks { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.check {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px 0 5px;
+  border-radius: 999px;
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 0.75px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  outline: none;
+  cursor: default;
+  animation: popIn 0.4s var(--pop) both;
+  animation-delay: calc(var(--i) * 90ms + 80ms);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.check:hover { transform: translateY(-1px); box-shadow: 0 0 0 0.75px rgba(0, 0, 0, 0.08), 0 3px 8px rgba(0, 0, 0, 0.06); }
+.check:focus-visible { box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--blue-600); }
+.checkTick { display: grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: var(--green-50); color: var(--green-700); }
+.checkTick svg { display: block; }
+.checkTick path { stroke-width: 1.7; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.35s ease-out forwards; animation-delay: calc(var(--i) * 90ms + 300ms); }
+.checkResult { color: var(--text-secondary); }
+.checkTip {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  bottom: calc(100% + 6px);
+  width: max-content;
+  padding: 6px 9px;
+  display: flex;
+  gap: 10px;
+  white-space: nowrap;
+  border-radius: 9px;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  box-shadow: 0 6px 17px rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  pointer-events: none;
+  opacity: 0;
+  translate: 0 3px;
+  transition: opacity 0.15s ease, translate 0.15s ease;
+}
+.check:hover .checkTip,
+.check:focus-visible .checkTip { opacity: 1; translate: none; transition-delay: 0.1s; }
+.check:hover,
+.check:focus-visible { z-index: 5; }
+/* the checks on the right open their details leftward, so they stay inside the card */
+.check:nth-child(n + 3) .checkTip { left: auto; right: 0; }
+.checkTook { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+/* ---------- the history ---------- */
+.log { --halo: var(--bg-primary); position: relative; margin-top: 8px; }
+.edges { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.edge { fill: none; stroke-width: 1.25; stroke-linecap: round; transition: stroke 0.6s ease, opacity 0.45s ease; }
+.edge[data-lane="0"] { stroke: var(--line-main); }
+.edge[data-lane="1"] { stroke: var(--blue-300); }
+.edge[data-lane="2"] { stroke: var(--teal-300); }
+.log[data-merged="true"] .edge[data-lane="1"] { stroke: var(--violet-300); }
+.edge[data-dashed="true"] { stroke-dasharray: 3 4; }
+.edge[data-lane="0"][data-dashed="true"] { stroke: #e2e2e2; }
+.edge[data-tone="blue"] { stroke: var(--blue-500); }
+.edge[data-tone="amber"] { stroke: var(--amber-500); }
+.edge[data-tone="green"] { stroke: var(--green-500); }
+.edge[data-tone="violet"] { stroke: var(--violet-500); stroke-width: 1.6; }
+.edge[data-dim="true"] { opacity: 0.4; } /* while main merges in, the old line steps back */
+.edge[data-gone="true"] { opacity: 0; }
+.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.7s var(--ease-out) forwards; }
+.late { animation-delay: 0.08s; }
+.mergeDraw { animation-duration: 0.8s; }
+.maskDraw { fill: none; stroke: #ffffff; stroke-width: 10; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.75s var(--ease-out) forwards; }
+.fadeIn { animation: fadeIn 0.5s ease both; }
+.glint {
+  fill: none;
+  stroke: var(--blue-500);
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-dasharray: 0.16 1.3;
+  stroke-dashoffset: 0.16;
+  animation: glint 0.95s cubic-bezier(0.45, 0, 0.25, 1) forwards;
+}
+@keyframes glint { to { stroke-dashoffset: -1.02; } }
+
+/* nodes cut the lines with a ring of the card's white, as in the thinking panel */
+.node {
+  position: absolute;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  display: grid;
+  place-items: center;
+}
+.node > * { grid-area: 1 / 1; }
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #b8b8b8;
+  box-shadow: 0 0 0 3px var(--halo);
+  transition: background-color 0.6s ease, border-color 0.6s ease;
+  animation: nodeIn 0.4s var(--pop) both;
+}
+.node[data-lane="1"] .dot { background: var(--blue-500); }
+.node[data-lane="2"] .dot { background: var(--teal-500); }
+.log[data-merged="true"] .node[data-lane="1"] .dot { background: var(--violet-500); }
+.node[data-busy="true"] .dot { background: var(--text-primary); }
+.node[data-kind="pending"] .dot { width: 9px; height: 9px; background: var(--halo); border: 1.5px solid var(--blue-500); animation: nodeIn 0.4s var(--pop) both, breathe 1.4s ease-in-out 0.4s infinite; }
+@keyframes breathe { 50% { transform: scale(0.8); } }
+.node[data-kind="merge"] .dot { width: 9px; height: 9px; background: var(--halo); border: 1.5px solid var(--blue-500); }
+.log[data-merged="true"] .node[data-kind="merge"] .dot { border-color: var(--violet-500); }
+/* the node being worked on gets the thinking panel's spinning ring */
+.nodeSpin {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1.25px solid transparent;
+  border-top-color: var(--text-primary);
+  border-right-color: var(--text-primary);
+  animation: spin 0.8s linear infinite;
+}
+
+/* where the PR merges: a dashed ghost, then amber with a pulse, green with a tick, violet once merged */
+.targetIn { animation: fadeIn 0.3s ease 0.5s both; }
+.targetDot {
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px var(--halo);
+  animation: nodeIn 0.45s var(--pop) both;
+}
+.targetDot svg { display: block; fill: none; stroke: #ffffff; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.node[data-state="ghost"] .targetDot,
+.node[data-state="checking"] .targetDot { width: 9px; height: 9px; background: var(--halo); border: 1.5px dashed #b4b4b4; }
+.node[data-state="conflict"] .targetDot { background: var(--amber-500); }
+.node[data-state="ready"] .targetDot { background: var(--green-500); }
+.node[data-state="merged"] .targetDot { background: var(--violet-500); }
+.tickDraw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.35s ease-out 0.2s forwards; }
+.pulse { width: 12px; height: 12px; border-radius: 50%; background: var(--amber-500); animation: pulse 1.6s ease-out infinite; }
+@keyframes pulse { from { opacity: 0.45; transform: scale(1); } to { opacity: 0; transform: scale(2.6); } }
+
+/* commit details on hover */
+.tip {
+  position: absolute;
+  z-index: 3;
+  bottom: calc(100% + 2px);
+  left: 50%;
+  width: max-content;
+  max-width: 260px;
+  padding: 6px 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-radius: 9px;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  box-shadow: 0 6px 17px rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-primary);
+  text-align: left;
+  pointer-events: none;
+  opacity: 0;
+  translate: -50% 3px;
+  transition: opacity 0.15s ease, translate 0.15s ease;
+}
+.tip[data-align="start"] { left: -2px; translate: 0 3px; }
+.tip[data-align="end"] { left: auto; right: -2px; translate: 0 3px; }
+.node:hover { z-index: 4; }
+.node:hover .tip { opacity: 1; translate: -50% 0; transition-delay: 0.1s; }
+.node:hover .tip[data-align="start"],
+.node:hover .tip[data-align="end"] { translate: 0 0; }
+.tipSha { margin-right: 6px; font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--text-secondary); }
+.tipMeta { font-size: 11.5px; color: var(--text-secondary); }
+
+/* ---------- the log: lanes on the left, a row per commit ---------- */
+.log { transition: height 0.45s var(--ease-out); }
+/* the history plays in: the lanes draw down as the rows arrive */
+.log > .edges { animation: reveal 0.7s var(--ease-out) backwards; }
+@keyframes reveal { from { clip-path: inset(100% -20px -20px -20px); } to { clip-path: inset(-20px); } }
+.morph { transition: d 0.45s var(--ease-out), stroke 0.6s ease var(--stroke-delay, 0s), opacity 0.45s ease; }
+.logFade {
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 56px;
+  height: 16px;
+  background: linear-gradient(rgba(255, 255, 255, 0), var(--bg-primary));
+  pointer-events: none;
+}
+.logRows { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+.logRow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28px;
+  transition: top 0.45s var(--ease-out);
+  animation: rowIn 0.45s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 70ms); /* rows there from the start play in one after another */
+}
+@keyframes rowIn { from { opacity: 0; transform: translateY(4px); filter: blur(2px); } }
+/* one that slots in waits for the rows below to make room */
+.logRow[data-fresh="true"] { animation-delay: 0.24s; }
+.logRow .node { transition: top 0.45s var(--ease-out); }
+/* a commit that slots in later is lit up for a moment */
+.logRow::before,
+.logRow::after {
+  content: "";
+  position: absolute;
+  z-index: -1; /* behind the row's text: the row's own animation keeps it inside the row */
+  inset: 1px -6px;
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+}
+.logRow[data-fresh="true"]::before { background: var(--bg-tertiary); animation: flash 1.4s ease-out 0.3s; }
+.logRow[data-fresh="true"][data-lane="0"]::before { background: #fdf3ea; } /* Lena's, a touch of her colour */
+@keyframes flash { 0%, 30% { opacity: 1; } 100% { opacity: 0; } }
+/* merged: a violet wave runs up your branch */
+.log[data-merged="true"] .logRow[data-lane="1"]::after { background: var(--violet-50); animation: flash 1.2s ease-out var(--wave); }
+.log[data-merged="true"] .logRow[data-lane="1"] .dot { transition-delay: var(--wave); }
+.log[data-merged="true"] .edge[data-lane="1"] { --stroke-delay: 0.45s; }
+
+.logText {
+  position: absolute;
+  left: 58px;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 19px;
+}
+.logLeft { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.logMessage { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.logRow[data-lane="1"] .logMessage { color: var(--text-primary); }
+/* a commit of Lena's that clashes with yours, while it still does */
+.logRow[data-clash="true"] .logMessage { color: var(--amber-700); }
+.logRow[data-clash="true"] .dot { background: var(--amber-500); }
+.logRow[data-busy="true"] .logMessage { color: transparent; }
+.logWho { flex: none; display: inline-flex; align-items: baseline; gap: 6px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; animation: rollIn 0.35s var(--ease-out) both; }
+.logSha { font-family: var(--mono); font-size: 11px; letter-spacing: 0; color: var(--text-tertiary); }
+@keyframes rollIn { from { opacity: 0; transform: translateY(60%); filter: blur(2px); } }
+.logWho[data-tone="conflict"] { color: var(--amber-700); }
+.logWho[data-tone="ready"] { color: var(--green-700); }
+.logWho[data-tone="merged"] { color: var(--violet-700); }
+
+/* each branch's name at its tip */
+.tag {
+  flex: none;
+  padding: 0 5px;
+  border-radius: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  line-height: 16px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  animation: popIn 0.35s var(--pop) both;
+}
+.tag[data-lane="0"] { background: #efefef; color: var(--text-secondary); }
+.tag[data-lane="1"] { background: var(--blue-50); color: var(--blue-700); }
+.tag[data-lane="2"] { background: var(--teal-50); color: var(--teal-700); }
+/* merged: your branch's name turns violet */
+.log[data-merged="true"] .tag[data-lane="1"] { background: var(--violet-50); color: var(--violet-700); transition: background-color 0.6s ease 0.4s, color 0.6s ease 0.4s, opacity 0.5s ease; }
+
+/* on a narrow card the messages need the room: shas and branch names stay in the tooltips */
+@container (max-width: 480px) {
+  .tag, .logSha { display: none; }
+}
+
+/* the conflicts a commit of Lena's clashes on, ticking down to a green tick */
+.clash {
+  flex: none;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--amber-50);
+  box-shadow: inset 0 0 0 0.75px rgba(245, 158, 11, 0.35);
+  color: var(--amber-700);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  animation: popIn 0.4s var(--pop) both;
+}
+.clash[data-done="true"] { padding: 0; background: var(--green-50); box-shadow: inset 0 0 0 0.75px rgba(34, 197, 94, 0.35); color: var(--green-700); }
+.clashTick path { stroke-width: 1.6; stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.35s ease-out 0.1s forwards; }
+
+/* the tests filling up under the row that's running them */
+.progress {
+  position: absolute;
+  left: 58px;
+  right: 0;
+  bottom: 2px;
+  height: 2px;
+  border-radius: 1px;
+  background: linear-gradient(90deg, var(--green-500) calc(var(--p) * 100%), #ececec 0);
+  animation: fadeIn 0.3s ease both;
+}
+
+/* the merge point: shakes when it clashes, rings out when it's ready and again, with sparks, when merged */
+.node[data-state="conflict"] .targetDot { animation: nodeIn 0.45s var(--pop) both, shake 0.42s ease 0.45s; }
+@keyframes shake { 20% { transform: translateX(-2px); } 40% { transform: translateX(2px); } 60% { transform: translateX(-1.5px); } 80% { transform: translateX(1px); } }
+.ring { width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--green-500); animation: ring 0.7s var(--ease-out) forwards; }
+.ring[data-tone="merged"] { border-color: var(--violet-500); }
+@keyframes ring { from { opacity: 0.9; transform: scale(1); } to { opacity: 0; transform: scale(3.2); } }
+.spark {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--violet-500);
+  transform: rotate(var(--a)) translateX(6px);
+  animation: spark 0.65s var(--ease-out) forwards;
+}
+.spark:nth-child(odd) { background: #a78bfa; }
+@keyframes spark { to { transform: rotate(var(--a)) translateX(19px) scale(0.4); opacity: 0; } }
+
+/* ---------- dark: the greys and tints that aren't tokens ---------- */
+.root[data-theme="dark"] .blocks i[data-kind="none"] { background: #3a3a3a; }
+.root[data-theme="dark"] .peekLine[data-kind="+"] { background: rgba(46, 160, 67, 0.15); }
+.root[data-theme="dark"] .peekLine[data-kind="-"] { background: rgba(248, 81, 73, 0.15); }
+.root[data-theme="dark"] .actionPlain:hover { background: #303030; }
+.root[data-theme="dark"] .count { text-decoration-color: rgba(227, 163, 59, 0.5); }
+.root[data-theme="dark"] .clashItem { border-top-color: var(--border); }
+.root[data-theme="dark"] .clashSide[data-who="lena"] { border-color: #a8693c; }
+.root[data-theme="dark"] .check { box-shadow: 0 0 0 0.75px rgba(255, 255, 255, 0.08); }
+.root[data-theme="dark"] .check:hover { box-shadow: 0 0 0 0.75px rgba(255, 255, 255, 0.12), 0 3px 8px rgba(0, 0, 0, 0.4); }
+.root[data-theme="dark"] .check:focus-visible { box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--blue-600); }
+.root[data-theme="dark"] .edge[data-lane="0"][data-dashed="true"] { stroke: #333333; }
+.root[data-theme="dark"] :where(.dot) { background: #5e5e5e; } /* main's commits; the lanes' own colours still win */
+.root[data-theme="dark"] .node[data-state="ghost"] .targetDot,
+.root[data-theme="dark"] .node[data-state="checking"] .targetDot { border-color: #5a5a5a; }
+.root[data-theme="dark"] .logFade { background: linear-gradient(transparent, var(--bg-primary)); }
+.root[data-theme="dark"] .logRow[data-fresh="true"][data-lane="0"]::before { background: #2a2018; }
+.root[data-theme="dark"] .tag[data-lane="0"] { background: var(--bg-tertiary); }
+.root[data-theme="dark"] .progress { background: linear-gradient(90deg, var(--green-500) calc(var(--p) * 100%), #2e2e2e 0); }
+/* shadows that lift a surface on white are lost on black: deeper ones, so the popovers still float */
+.root[data-theme="dark"] .pill { box-shadow: 0 0 0 0.75px var(--border), 0 4px 12px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.3); }
+.root[data-theme="dark"] .filesPop,
+.root[data-theme="dark"] .peek,
+.root[data-theme="dark"] .conflictTip,
+.root[data-theme="dark"] .checkTip,
+.root[data-theme="dark"] .tip { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+
+@media (prefers-reduced-motion: reduce) {
+  .root *, .root *::before, .root *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition: none !important;
+  }
+  .glint { display: none; }
+}

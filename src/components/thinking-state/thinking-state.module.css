@@ -1,0 +1,325 @@
+/* Built from the prompt composer's tokens (posts › 28:891), so the two sit together. No card:
+   it sits straight on the stage, and its nodes cut the lines with a ring of the stage colour. */
+.root {
+  --halo: #ebebeb;           /* the stage behind it */
+  --bg-primary: #ffffff;
+  --border: #e0e0e0;         /* border/primary */
+  /* the only three text colours */
+  --text-primary: #1f1f1f;   /* Text/body/primary */
+  --text-secondary: #666666; /* Text/body/secondary */
+  --text-tertiary: #999999;  /* Text/body/tertiary */
+  --blue-500: #3b82f6;       /* blue/500: the finished check */
+  --blue-600: #2563eb;       /* blue/600: focus rings */
+  --line: #cbcbcb;
+  --line-dim: #dcdcdc;       /* branches: same greys, a step lighter */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --pop: cubic-bezier(0.3, 1.45, 0.5, 1);
+
+  box-sizing: border-box;
+  position: relative; /* the header's offsetTop is measured from here, with or without the entrance animation */
+  width: min(560px, 100%);
+  overflow: clip;
+  overflow-clip-margin: 48px; /* room for chip tooltips, where supported */
+  transition: height 0.45s var(--ease-out);
+  font-family: var(--font-inter3), "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 460;
+  letter-spacing: -0.03px;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  animation: rise 0.8s var(--ease-out) both;
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(12px); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+/* ---------- header: chevron, "Thinking" + live timer ---------- */
+.head {
+  display: grid;
+  grid-template-columns: 32px auto 1fr; /* 32 + the 8px gap puts the label on the rows' 40px text edge */
+  align-items: center;
+  column-gap: 8px;
+  width: 100%;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  letter-spacing: inherit;
+  text-align: left;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.head:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 3px; }
+.lead { display: flex; align-items: center; width: 20px; height: 20px; justify-content: center; color: var(--text-tertiary); }
+.chevron { transition: transform 0.3s var(--ease-out); }
+.head[aria-expanded="false"] .chevron { transform: rotate(-90deg); }
+.head:hover .lead { color: var(--text-secondary); }
+.timer { font-size: 12px; color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+/* a live header names the step in progress; a long one is cut off before it pushes the timer out */
+.head[data-live="true"] { grid-template-columns: 32px minmax(0, max-content) 1fr; }
+.liveLabel { min-width: 0; }
+.liveLabel .shimmer { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.headDone { grid-column: 2; color: var(--text-secondary); }
+.swap { display: inline-block; animation: swapIn 0.35s var(--ease-out) both; }
+@keyframes swapIn { from { opacity: 0; transform: translateY(3px); filter: blur(2px); } }
+
+/* the shimmer that runs across whatever is in progress */
+.shimmer {
+  display: inline-block;
+  background: linear-gradient(
+    90deg,
+    var(--shimmer-base, var(--text-primary)) 0%,
+    var(--shimmer-base, var(--text-primary)) 38%,
+    var(--shimmer-glint, var(--text-tertiary)) 50%,
+    var(--shimmer-base, var(--text-primary)) 62%,
+    var(--shimmer-base, var(--text-primary)) 100%
+  );
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  animation: shimmer 1.8s linear infinite;
+}
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -150% 0; } }
+
+/* ---------- the graph: lines in an SVG behind, nodes on top ---------- */
+.graphWrap { position: relative; margin-top: 12px; transition: opacity 0.25s ease; }
+.root[data-expanded="false"] .graphWrap { opacity: 0; pointer-events: none; }
+.graph { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+.edge {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 0.5s var(--ease-out) forwards;
+}
+.edge[data-kind="branch"] { stroke: var(--line-dim); }
+/* a dead end is dashed, and fades in instead of drawing */
+.edge[data-kind="dead"] { stroke: var(--line-dim); stroke-dasharray: 2 3; stroke-dashoffset: 0; animation: fadeIn 0.4s ease both; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.list { position: relative; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
+.row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  animation: rowIn 0.45s var(--ease-out) both;
+}
+@keyframes rowIn { from { opacity: 0; transform: translateY(5px); filter: blur(2px); } }
+
+/* nodes: centred on their lane, with a ring of the stage colour so lines stop short of them */
+.node {
+  position: absolute;
+  top: 10px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #b8b8b8;
+  box-shadow: 0 0 0 3px var(--halo);
+  transition: background-color 0.3s ease;
+  animation: nodeIn 0.4s var(--pop) both;
+}
+.row[data-lane="1"] .dot { width: 6px; height: 6px; background: #d2d2d2; }
+.row[data-active="true"] .dot { background: var(--text-primary); }
+.row[data-lane="1"][data-active="true"] .dot { background: var(--text-tertiary); }
+.searchNode {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--halo);
+  color: var(--text-secondary);
+  animation: nodeIn 0.4s var(--pop) both;
+}
+.row[data-active="true"] .searchNode { color: var(--text-primary); }
+/* a merge commit: a hollow ring on the main line */
+.mergeNode {
+  width: 9px;
+  height: 9px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1.5px solid #9a9a9a;
+  background: var(--halo);
+  box-shadow: 0 0 0 2.5px var(--halo);
+  animation: nodeIn 0.4s var(--pop) both;
+}
+.row[data-active="true"] .mergeNode { border-color: var(--text-primary); }
+.deadNode {
+  display: block;
+  background: var(--halo);
+  box-shadow: 0 0 0 3px var(--halo);
+  border-radius: 50%;
+  animation: nodeIn 0.4s var(--pop) both;
+}
+.deadNode path { fill: none; stroke: #c4c4c4; stroke-width: 1.4; stroke-linecap: round; }
+@keyframes nodeIn { from { opacity: 0; transform: scale(0.3); } }
+/* where a line has to travel first (a fork out, a merge back), its node waits for the line to arrive */
+.row[data-node="fork"] .dot,
+.row[data-node="fork"] .spin,
+.mergeNode { animation-delay: 0.35s; }
+.row[data-node="fork"] .spin { opacity: 0; animation: spin 0.8s linear 0.35s infinite, fadeIn 0.2s ease 0.35s forwards; }
+/* the step in progress gets a spinning ring around its node */
+.spin {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 1.25px solid transparent;
+  border-top-color: var(--text-primary);
+  border-right-color: var(--text-primary);
+  animation: spin 0.8s linear infinite;
+}
+.row[data-node="search"] .spin { width: 22px; height: 22px; }
+.row[data-lane="1"] .spin { width: 13px; height: 13px; border-top-color: var(--text-tertiary); border-right-color: var(--text-tertiary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- row content ---------- */
+.body { grid-column: 2; min-width: 0; }
+.line { display: flex; align-items: center; gap: 8px; min-height: 20px; }
+.label { min-width: 0; font-size: 13px; line-height: 20px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row[data-active="true"] .label { color: var(--text-primary); }
+/* branch rows are dimmed: tertiary text, and a softer shimmer while they run */
+.row[data-lane="1"] .label { color: var(--text-tertiary); }
+.row[data-lane="1"][data-active="true"] .label { color: var(--text-secondary); }
+.row[data-lane="1"] .shimmer { --shimmer-base: var(--text-secondary); --shimmer-glint: #c4c4c4; }
+
+/* ---------- chips: white pills on the stage ---------- */
+.chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 6px 0 2px; }
+.chip,
+.more {
+  animation: chipIn 0.4s var(--pop) both;
+  animation-delay: calc(var(--i) * 110ms + 120ms);
+}
+@keyframes chipIn { from { opacity: 0; transform: scale(0.85) translateY(2px); } }
+.chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 9px 0 6px;
+  border-radius: 10000px;
+  background: var(--bg-primary);
+  box-shadow: 0 0 0 0.75px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  cursor: default;
+  outline: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.chip svg { display: block; flex: none; }
+.chip:hover { transform: translateY(-1px); box-shadow: 0 0 0 0.75px rgba(0, 0, 0, 0.08), 0 3px 8px rgba(0, 0, 0, 0.06); }
+.chip:focus-visible { box-shadow: 0 0 0 2px var(--halo), 0 0 0 4px var(--blue-600); }
+.more {
+  height: 24px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: inherit;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.more:hover { color: var(--text-secondary); }
+.more:focus-visible { outline: 2px solid var(--blue-600); outline-offset: 0; }
+
+/* each source shows where it lives, above the chip */
+.tip {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  bottom: calc(100% + 7px);
+  max-width: 300px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--bg-primary);
+  border: 0.75px solid var(--border);
+  box-shadow: 0 6px 17px 0 rgba(0, 0, 0, 0.06);
+  font-family: var(--font-geist-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 15px;
+  letter-spacing: 0;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 3px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.chip:hover .tip,
+.chip:focus-visible .tip { opacity: 1; transform: translate(-50%, 0); transition-delay: 0.2s; }
+
+/* ---------- done: a blue check pops in and draws its tick ---------- */
+.finish .label { color: var(--text-primary); }
+.note { font-size: 12px; color: var(--text-tertiary); animation: fadeIn 0.4s ease 0.3s both; }
+.check { display: block; overflow: visible; border-radius: 50%; box-shadow: 0 0 0 3px var(--halo); animation: checkPop 0.5s var(--pop) both; }
+.check circle { fill: var(--blue-500); }
+.check path {
+  fill: none;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: draw 0.35s ease-out 0.25s forwards;
+}
+@keyframes checkPop { from { opacity: 0; transform: scale(0.4); } }
+
+/* ---------- dark: inside anything marked data-theme="dark" ---------- */
+:global([data-theme="dark"]) .root {
+  --halo: #111111;
+  --bg-primary: #1a1a1a;
+  --border: #2e2e2e;
+  --text-primary: #ededed;
+  --text-secondary: #a1a1a1;
+  --text-tertiary: #6b6b6b;
+  --blue-600: #4c8df7;
+  --line: #404040;
+  --line-dim: #303030;
+}
+:global([data-theme="dark"]) :where(.dot) { background: #5e5e5e; } /* the active step's colour still wins */
+:global([data-theme="dark"]) .row[data-lane="1"] .dot { background: #444444; }
+:global([data-theme="dark"]) .row[data-lane="1"][data-active="true"] .dot { background: var(--text-tertiary); }
+:global([data-theme="dark"]) .mergeNode { border-color: #767676; }
+:global([data-theme="dark"]) .row[data-active="true"] .mergeNode { border-color: var(--text-primary); }
+:global([data-theme="dark"]) .deadNode path { stroke: #4a4a4a; }
+:global([data-theme="dark"]) .row[data-lane="1"] .shimmer { --shimmer-glint: #4a4a4a; }
+:global([data-theme="dark"]) .chip { box-shadow: 0 0 0 0.75px rgba(255, 255, 255, 0.08); }
+:global([data-theme="dark"]) .chip:hover { box-shadow: 0 0 0 0.75px rgba(255, 255, 255, 0.12), 0 3px 8px rgba(0, 0, 0, 0.4); }
+:global([data-theme="dark"]) .chip:focus-visible { box-shadow: 0 0 0 2px var(--halo), 0 0 0 4px var(--blue-600); }
+:global([data-theme="dark"]) .tip { box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); }
+
+@media (prefers-reduced-motion: reduce) {
+  .root { animation: none; transition: none; }
+  .row, .chip, .more, .note, .swap, .check, .dot, .searchNode, .mergeNode, .deadNode { animation: none; }
+  .edge { animation: none; stroke-dashoffset: 0; }
+  .spin { animation: none; }
+  .shimmer { animation: none; background: none; color: var(--text-primary); }
+  .check path { animation: none; stroke-dashoffset: 0; }
+}
